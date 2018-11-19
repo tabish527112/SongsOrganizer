@@ -4,13 +4,14 @@ public class Const {
 	public interface MSG_CODES {
 		final int INVALID_PARAMS = 1;
 		final int NO_ID_FIELD = 2;
-		final int ADDED = 3;
-		final int UPDATED = 4;
-		final int NO_DATA_FOUND = 5;
+		final int MANDATORY_FIELD_EMPTY = 3;
+		final int SUCCESS = 4;
+		final int NO_DATA_FOUND = 6;
 	}
 
 	public interface LAYOUT_CONST {
 		final String ID = "id";
+		final String SORT_MAP = "sortMap";
 	}
 
 	public interface VISIBILITY {

@@ -19,6 +19,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mtk.songsOrganizer.common.annotations.Entity;
+import com.mtk.songsOrganizer.common.annotations.IgnoreField;
 import com.mtk.songsOrganizer.common.dto.DTOObj;
 
 public class Utils {
@@ -104,7 +105,7 @@ public class Utils {
 			return;
 		}
 		Class class1 = object.getClass();
-		Field[] fields = getAllSuperClassFields(class1, null);
+		List<Field> fields = getAllSuperClassFields(class1, null);
 		List newList, oldList;
 		Document tempDoc;
 		if (!isEmpty(fields)) {
@@ -223,11 +224,16 @@ public class Utils {
 		}
 	}
 
-	public static Field[] getAllSuperClassFields(Class class1, Class annoCls) {
+	/*
+	 * Gets all super-class fields except the ones with the annotation @IgnoreField
+	 * Optional : annoCls - to find fields with a specific annotation
+	 */
+	public static List<Field> getAllSuperClassFields(Class class1, Class annoCls) {
 		List<Field> fieldList = new ArrayList<>();
 		while (class1.getSuperclass() != null) {
 			for (Field field : class1.getDeclaredFields()) {
-				if (annoCls == null || field.isAnnotationPresent(annoCls)) {
+				if (!field.isAnnotationPresent(IgnoreField.class)
+						&& (annoCls == null || field.isAnnotationPresent(annoCls))) {
 					fieldList.add(field);
 				}
 			}
@@ -236,7 +242,7 @@ public class Utils {
 		if (fieldList.size() == 0) {
 			return null;
 		}
-		return fieldList.toArray(new Field[fieldList.size()]);
+		return fieldList;
 	}
 
 	/* DB CONNECTION UTILS */

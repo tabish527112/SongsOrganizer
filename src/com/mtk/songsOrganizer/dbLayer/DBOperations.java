@@ -11,6 +11,7 @@ import org.bson.Document;
 import com.mongodb.client.result.UpdateResult;
 import com.mtk.songsOrganizer.common.annotations.Entity;
 import com.mtk.songsOrganizer.common.annotations.IdField;
+import com.mtk.songsOrganizer.common.annotations.MandatoryField;
 import com.mtk.songsOrganizer.common.dto.DTOObj;
 import com.mtk.songsOrganizer.common.dto.ParamDTO;
 import com.mtk.songsOrganizer.common.dto.ReplyDTO;
@@ -28,7 +29,19 @@ public class DBOperations {
 			replyDTO.addErrorMsgCode(Const.MSG_CODES.INVALID_PARAMS);
 			return replyDTO;
 		}
-		Field[] idFields = Utils.getAllSuperClassFields(dtoObj.getClass(), IdField.class);
+		List<Field> idFields = new ArrayList<>(), mandatoryFields = new ArrayList<>(),
+				fields = Utils.getAllSuperClassFields(dtoObj.getClass(), null);
+		if (Utils.isEmpty(fields)) {
+			replyDTO.addErrorMsgCode(Const.MSG_CODES.NO_ID_FIELD);
+			return replyDTO;
+		}
+		for (Field field : fields) {
+			if (field.isAnnotationPresent(IdField.class)) {
+				idFields.add(field);
+			} else if (field.isAnnotationPresent(MandatoryField.class)) {
+				mandatoryFields.add(field);
+			}
+		}
 		if (Utils.isEmpty(idFields)) {
 			replyDTO.addErrorMsgCode(Const.MSG_CODES.NO_ID_FIELD);
 			return replyDTO;
@@ -40,6 +53,17 @@ public class DBOperations {
 		String pkFldName = null;
 
 		try {
+			if (mandatoryFields.size() > 0) {
+				for (Field field : mandatoryFields) {
+					field.setAccessible(true);
+					val = field.get(dtoObj);
+					if (Utils.isEmpty(val)) {
+						replyDTO.addErrorMsgCode(Const.MSG_CODES.MANDATORY_FIELD_EMPTY);
+						return replyDTO;
+					}
+				}
+			}
+
 			for (Field field : idFields) {
 				field.setAccessible(true);
 				val = primaryVal = field.get(dtoObj);
@@ -91,7 +115,7 @@ public class DBOperations {
 				UpdateResult updateResult = Utils.getCollection(dtoObj.getClass())
 						.replaceOne(new Document("_id", docList.get(0).get("_id")), docList.get(0));
 				if (updateResult.wasAcknowledged() && updateResult.getMatchedCount() > 0) {
-					replyDTO.addMsgCode(Const.MSG_CODES.UPDATED);
+					replyDTO.addMsgCode(Const.MSG_CODES.SUCCESS);
 				} else {
 					replyDTO.setError(true);
 				}
@@ -109,8 +133,8 @@ public class DBOperations {
 				if (primaryVal instanceof Integer) {
 					primaryVal = (int) primaryVal + 1;
 				} else if (primaryVal instanceof Long) {
-					primaryVal = (long) primaryVal + 1;
-				} else {
+					primaryVal = (long) ((long) primaryVal + 1);
+				} else if (primaryVal instanceof String) {
 					// for string key
 					if (primaryVal == null) {
 						primaryVal = "A";
@@ -126,7 +150,7 @@ public class DBOperations {
 
 				Utils.getCollection(dtoObj.getClass()).insertOne(addUpdateDoc);
 				replyDTO.addOtherInfo(Const.LAYOUT_CONST.ID, primaryVal);
-				replyDTO.addMsgCode(Const.MSG_CODES.ADDED);
+				replyDTO.addMsgCode(Const.MSG_CODES.SUCCESS);
 			}
 		}
 
@@ -135,7 +159,47 @@ public class DBOperations {
 
 	public ReplyDTO fetch(ParamDTO paramDTO) {
 		ReplyDTO replyDTO = new ReplyDTO();
-
+		DTOObj dtoObj = paramDTO.getDtoObj();
+		if (paramDTO == null || dtoObj == null) {
+			replyDTO.addErrorMsgCode(Const.MSG_CODES.INVALID_PARAMS);
+			return replyDTO;
+		}
+		Document findDoc = new Document();
+		Utils.populateDocumentFromDTO(dtoObj, findDoc, null, true);
+		Document sortDoc = new Document();
+		if (paramDTO.getOtherInfo(Const.LAYOUT_CONST.SORT_MAP) != null) {
+			sortDoc.putAll((Map<String, Integer>) paramDTO.getOtherInfo(Const.LAYOUT_CONST.SORT_MAP));
+		}
+		List<Document> findDocList;
+		if (paramDTO.getPageNo() > 0) {
+			findDocList = (List<Document>) Utils.getCollection(dtoObj.getClass()).find(findDoc).sort(sortDoc)
+					.skip(paramDTO.getNumRecords() * paramDTO.getPageNo()).limit(paramDTO.getNumRecords())
+					.into(new ArrayList<>());
+			replyDTO.setCount(Utils.getCollection(dtoObj.getClass()).count(findDoc));
+			replyDTO.setLastPage(findDocList != null && findDocList.size() < replyDTO.getCount());
+		} else {
+			findDocList = (List<Document>) Utils.getCollection(dtoObj.getClass()).find(findDoc).sort(sortDoc)
+					.into(new ArrayList<>());
+		}
+		if (Utils.isEmpty(findDocList)) {
+			replyDTO.addErrorMsgCode(Const.MSG_CODES.NO_DATA_FOUND);
+			return replyDTO;
+		}
+		List<DTOObj> returnList = new ArrayList<>();
+		DTOObj dtoObj2;
+		for (Document doc : findDocList) {
+			try {
+				dtoObj2 = dtoObj.getClass().newInstance();
+			} catch (InstantiationException | IllegalAccessException e) {
+				e.printStackTrace();
+				replyDTO.addErrorMsgCode(Const.MSG_CODES.INVALID_PARAMS);
+				return replyDTO;
+			}
+			Utils.populateDTOFromDocument(doc, dtoObj2);
+			returnList.add(dtoObj2);
+		}
+		replyDTO.setListObj(returnList);
+		replyDTO.addErrorMsgCode(Const.MSG_CODES.SUCCESS);
 		return replyDTO;
 	}
 }

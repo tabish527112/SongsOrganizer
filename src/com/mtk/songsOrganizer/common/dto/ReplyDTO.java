@@ -13,7 +13,7 @@ public class ReplyDTO implements Serializable {
 	private List listObj;
 	private Set<String> msgList;
 	private Map otherInfo;
-	private int count;
+	private long count;
 	private boolean lastPage;
 	private boolean error;
 	private int msgCode;
@@ -68,11 +68,11 @@ public class ReplyDTO implements Serializable {
 		this.lastPage = lastPage;
 	}
 
-	public int getCount() {
+	public long getCount() {
 		return count;
 	}
 
-	public void setCount(int count) {
+	public void setCount(long count) {
 		this.count = count;
 	}
 
