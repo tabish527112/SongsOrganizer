@@ -16,7 +16,7 @@ import com.mtk.songsOrganizer.common.utils.Utils;
 public class ExportPlaylist {
 	public static final String RHYTHMBOX_PLAYLIST_XML_PATH = "/home/mtk/.local/share/rhythmbox/";
 	public static final String DEFAULT_FIX_PATH = "/home/mtk/Music/";
-	public static final String DEFAULT_OUT_DIR = "/home/mtk/dump/PlaylistDump/";
+	public static final String DEFAULT_OUT_DIR = "/home/mtk/dump/Music/";
 	public static final String DEFAULT_PLAYLIST_NAME = "MTK";
 
 	interface RHYTHMBOX_XML_CONSTS {
